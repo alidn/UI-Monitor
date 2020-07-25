@@ -1,0 +1,24 @@
+[package]
+authors = ["ali <anili@my.bcit.ca>"]
+edition = "2018"
+name = "ui_monitor"
+version = "0.1.0"
+
+[dependencies]
+actix-rt = "1.0.0"
+actix-web = "2.0.0"
+config = "0.10.1"
+deadpool-postgres = "0.5.0"
+derive_more = "0.99.2"
+dotenv = "0.15.0"
+openssl = "0.10.30"
+postgres-openssl = "0.3.0"
+serde = {version = "1.0.104", features = ["derive"]}
+tokio-pg-mapper = "0.1"
+tokio-pg-mapper-derive = "0.1"
+tokio-postgres = "0.5.1"
+actix-identity = "0.2.1"
+futures = "0.3.5"
+serde_json = "1.0"
+rand = "0.7.3"
+actix-service = "1.0.5"
