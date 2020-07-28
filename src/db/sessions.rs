@@ -1,9 +1,11 @@
 use crate::db::reports::{Report, ReportInfo};
 use crate::dberror::DataError;
+use actix_cors::Cors;
 use actix_web::{Error, HttpRequest, HttpResponse, Responder};
 use deadpool_postgres::Client;
 use futures::future::{ready, Ready};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 pub type ProjectStats = Vec<Step>;
 
@@ -99,9 +101,8 @@ impl Session {
             .collect())
     }
 
-    pub fn into_group(self, tag_groups: &[TagGroup]) -> GroupedSession {
-        let tag_group_ids = self
-            .reports
+    fn group_ids(&self, tag_groups: &[TagGroup]) -> Vec<i32> {
+        self.reports
             .iter()
             .map(|report_info| {
                 tag_groups
@@ -109,34 +110,52 @@ impl Session {
                     .find(|&tag_group| tag_group.contains_any(&report_info.tags))
                     .map_or(0, |tag_group| tag_group.id)
             })
-            .collect::<Vec<i32>>();
+            .collect()
+    }
 
-        let last_group_id = -1;
-        let mut group_reports: Vec<Vec<ReportInfo>> = Vec::new();
-        let mut current_group: Vec<ReportInfo> = Vec::new();
-        for (idx, report_info) in self.reports.iter().enumerate() {
-            if tag_group_ids[idx] != last_group_id {
-                group_reports.push(current_group.clone());
-                current_group = Vec::new();
-            } else {
-                current_group.push(report_info.clone())
+    fn group_by_ids(&self, group_ids: &Vec<i32>) -> Vec<Vec<ReportInfo>> {
+        let mut current_id = -1;
+        let mut current_group = vec![];
+        let mut result = vec![];
+        for (idx, id) in group_ids.iter().enumerate() {
+            if *id != current_id && !current_group.is_empty() {
+                result.push(current_group.clone());
+                current_group = vec![];
             }
+            current_group.push(self.reports[idx].clone());
+            current_id = *id;
         }
-        // if !current_group.is_empty() {
-        //     group_reports.push(current_group)
-        // }
+        result
+    }
 
-        let steps = group_reports
+    pub fn into_group(self, tag_groups: &[TagGroup]) -> GroupedSession {
+        let tag_group_ids = self.group_ids(tag_groups);
+
+        let group_reports = self.group_by_ids(&tag_group_ids);
+
+        let timestamps = group_reports
+            .iter()
+            .map(|report_group| {
+                report_group
+                    .last()
+                    .map_or(0, |last_report| last_report.time_ms)
+            })
+            .collect::<Vec<i64>>();
+
+        let mut last_timestamp = 0;
+        let mut durations = Vec::<i64>::new();
+        for timestamp in timestamps {
+            durations.push(timestamp - last_timestamp);
+            last_timestamp = timestamp;
+        }
+
+        let steps = group_reports[1..]
             .iter()
             .enumerate()
-            .map(|(idx, report_group)| {
-                let last_time = report_group.last().map_or(0, |report| report.time_ms);
-                let first_time = report_group.first().map_or(0, |report| report.time_ms);
-                Step {
-                    step_number: idx,
-                    tag_group: tag_groups[idx].clone(),
-                    avg_time_ms: last_time - first_time,
-                }
+            .map(|(idx, _report_group)| Step {
+                step_number: idx,
+                tag_group: tag_groups[tag_group_ids[idx + 1] as usize].clone(),
+                avg_time_ms: durations[idx + 1],
             })
             .collect();
 

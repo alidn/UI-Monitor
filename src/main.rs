@@ -5,6 +5,7 @@ mod config;
 mod db;
 mod dberror;
 
+use actix_cors::Cors;
 use actix_identity::{CookieIdentityPolicy, IdentityService};
 use actix_web::{web, App, HttpServer};
 use deadpool_postgres::config as deadpool_config;
@@ -32,6 +33,7 @@ async fn main() -> std::io::Result<()> {
 
     let _server = HttpServer::new(move || {
         App::new()
+            .wrap(Cors::new().supports_credentials().finish())
             .wrap(IdentityService::new(
                 CookieIdentityPolicy::new(&private_key)
                     .name("user_auth")
@@ -64,7 +66,7 @@ async fn main() -> std::io::Result<()> {
                     .route(web::get().to(api::reports::get_grouped_sessions)),
             )
     })
-    .bind("127.0.0.1:8080")?
+    .bind("127.0.0.1:9000")?
     .run()
     .await;
     Ok(())

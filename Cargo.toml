@@ -25,3 +25,4 @@ tokio-pg-mapper = "0.1"
 tokio-pg-mapper-derive = "0.1"
 tokio-postgres = "0.5.1"
 uuid = {version = "0.8", features = ["serde", "v4"]}
+actix-cors = "0.2.0"
