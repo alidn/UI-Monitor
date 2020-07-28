@@ -26,14 +26,14 @@ create table if not exists main.reports
 (
     report_id  serial primary key,
     project_id integer     not null references main.projects (project_id),
-    session_id uuid unique not null,
-    timestamp  timestamp   not null default current_timestamp
+    session_id uuid not null,
+    timestamp  bigint   not null default current_timestamp
 );
 
 create table if not exists main.tags
 (
     tag_id serial primary key,
-    name   varchar(20)
+    name   varchar(20) not null unique
 );
 
 create table if not exists main.report_tags

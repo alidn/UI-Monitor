@@ -1,0 +1,50 @@
+use crate::db::reports::{Report, ReportInfo};
+use crate::db::sessions::{GroupedSession, Session, TagGroup};
+use crate::dberror;
+use actix_web::web::Json;
+use actix_web::{web, Error, HttpRequest, HttpResponse};
+use deadpool_postgres::{Client, Pool};
+
+pub async fn save_report(
+    _req: HttpRequest,
+    report_info: Json<ReportInfo>,
+    db_pool: web::Data<Pool>,
+) -> Result<HttpResponse, Error> {
+    let client: Client = db_pool.get().await.map_err(dberror::DataError::PoolError)?;
+
+    Report::save_report(&client, report_info.into_inner()).await?;
+
+    Ok(HttpResponse::Ok().body(""))
+}
+
+pub async fn get_sessions(
+    _req: HttpRequest,
+    path: web::Path<i32>,
+    db_pool: web::Data<Pool>,
+) -> Result<HttpResponse, Error> {
+    let client: Client = db_pool.get().await.map_err(dberror::DataError::PoolError)?;
+
+    let sessions = Session::get_sessions(&client, path.into_inner()).await?;
+    let sessions_serialized = serde_json::to_string(&sessions).unwrap();
+
+    Ok(HttpResponse::Ok().body(sessions_serialized))
+}
+
+pub async fn get_grouped_sessions(
+    _req: HttpRequest,
+    path: web::Path<i32>,
+    tag_groups: web::Json<Vec<TagGroup>>,
+    db_pool: web::Data<Pool>,
+) -> Result<HttpResponse, Error> {
+    let client: Client = db_pool.get().await.map_err(dberror::DataError::PoolError)?;
+
+    let tag_groups = tag_groups.into_inner();
+
+    let grouped_sessions = Session::get_sessions(&client, path.into_inner())
+        .await?
+        .into_iter()
+        .map(|session| session.into_group(&tag_groups))
+        .collect::<Vec<GroupedSession>>();
+
+    Ok(HttpResponse::Ok().body(serde_json::to_string(&grouped_sessions).unwrap()))
+}

@@ -7,11 +7,12 @@ use tokio_pg_mapper_derive::PostgresMapper;
 use crate::api::users::LoginInfo;
 use crate::dberror::DataError;
 use actix_web::{Error, HttpRequest, HttpResponse, Responder};
-use openssl::hash::hash_xof;
 
 #[derive(Deserialize, Serialize, PostgresMapper)]
 #[pg_mapper(table = "users")]
 pub struct User {
+    #[serde(skip_serializing)]
+    pub user_id: i32,
     pub username: String,
     pub email: String,
 
@@ -64,12 +65,12 @@ impl User {
     pub async fn validate_login_info(
         client: &Client,
         login_info: &LoginInfo,
-    ) -> Result<(), DataError> {
+    ) -> Result<i32, DataError> {
         let user = Self::get_user_by_email(client, &login_info.email).await?;
         if hash_pass(&login_info.password) != user.password {
             Err(DataError::WrongPassword)
         } else {
-            Ok(())
+            Ok(user.user_id)
         }
     }
 }

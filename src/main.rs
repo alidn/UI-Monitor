@@ -1,3 +1,5 @@
+#![feature(backtrace)]
+
 mod api;
 mod config;
 mod db;
@@ -24,26 +26,42 @@ async fn main() -> std::io::Result<()> {
 
     let pool = config.pg.create_pool(connector).unwrap();
 
-    let private_key = rand::thread_rng().gen::<[u8; 32]>();
+    // let private_key = rand::thread_rng().gen::<[u8; 32]>();
+    // FIXME: Don't forget to use random key (the above line) in prod.
+    let private_key: [u8; 32] = [0; 32];
 
     let _server = HttpServer::new(move || {
         App::new()
             .wrap(IdentityService::new(
                 CookieIdentityPolicy::new(&private_key)
-                    .name("authentication")
+                    .name("user_auth")
                     .secure(false),
             ))
-            .service(
-                web::resource("/login")
-                    .wrap(api::auth::CheckLogin)
-                    .route(web::post().to(api::users::login)),
-            )
-            // .wrap(api::auth::CheckLogin)
+            .wrap(IdentityService::new(
+                CookieIdentityPolicy::new(&private_key)
+                    .name("report_auth")
+                    .secure(false),
+            ))
+            .service(web::resource("/login").route(web::post().to(api::users::login)))
             .data(pool.clone())
             .service(
-                web::resource("/users/{username}")
-                    .wrap(api::auth::CheckLogin)
-                    .route(web::get().to(api::users::greet)),
+                web::resource("/projects")
+                    .wrap(api::user_auth::CheckLogin)
+                    .route(web::get().to(api::projects::get_projects)),
+            )
+            .service(
+                web::resource("/projects/{name}")
+                    .wrap(api::user_auth::CheckLogin)
+                    .route(web::post().to(api::projects::save_project)),
+            )
+            .service(web::resource("/reports").route(web::post().to(api::reports::save_report)))
+            .service(
+                web::resource("/projects/{project_id}/sessions")
+                    .route(web::get().to(api::reports::get_sessions)),
+            )
+            .service(
+                web::resource("/projects/{project_id}/grouped")
+                    .route(web::get().to(api::reports::get_grouped_sessions)),
             )
     })
     .bind("127.0.0.1:8080")?

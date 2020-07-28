@@ -1,5 +1,5 @@
 use actix_identity::Identity;
-use actix_web::{web, Either, Error, HttpRequest, HttpResponse};
+use actix_web::{web, Error, HttpRequest, HttpResponse};
 use deadpool_postgres::{Client, Pool};
 use serde::{Deserialize, Serialize};
 
@@ -21,9 +21,9 @@ pub async fn login(
 
     let login_info = login_info.into_inner();
 
-    User::validate_login_info(&client, &login_info).await?;
+    let user_id = User::validate_login_info(&client, &login_info).await?;
 
-    id.remember(login_info.email);
+    id.remember(user_id.to_string());
 
     Ok(HttpResponse::Ok().body(""))
 }
