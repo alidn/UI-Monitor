@@ -1,0 +1,16 @@
+.title {
+    padding-bottom: 2rem;
+}
+
+.layout {
+    margin: 2rem;
+}
+
+.sessionDuration {
+    display: flex;
+    flex-direction: row;
+}
+
+.sessionUnitSelect {
+    margin-left: 1rem;
+}
