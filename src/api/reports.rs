@@ -48,3 +48,17 @@ pub async fn get_grouped_sessions(
 
     Ok(HttpResponse::Ok().body(serde_json::to_string(&grouped_sessions).unwrap()))
 }
+
+pub async fn get_percentages(
+    _req: HttpRequest,
+    path: web::Path<i32>,
+    tag_groups: web::Json<Vec<TagGroup>>,
+    db_pool: web::Data<Pool>,
+) -> Result<HttpResponse, Error> {
+    let client: Client = db_pool.get().await.map_err(dberror::DataError::PoolError)?;
+    let tag_groups = tag_groups.into_inner();
+
+    let percentages = Session::get_percentages(&client, path.into_inner(), &tag_groups).await?;
+
+    Ok(HttpResponse::Ok().body(serde_json::to_string(&percentages).unwrap()))
+}

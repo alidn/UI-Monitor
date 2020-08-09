@@ -48,6 +48,18 @@ impl Report {
         })
     }
 
+    pub async fn get_tags(&self, client: &Client) -> Result<Vec<Tag>, DataError> {
+        let stmt_str = include_str!("../../sql/get_tags_of_report.sql");
+        let stmt = client.prepare(&stmt_str).await?;
+
+        Ok(client
+            .query(&stmt, &[&self.report_id])
+            .await?
+            .iter()
+            .map(|row| Tag::from_row_ref(row).unwrap())
+            .collect::<Vec<Tag>>())
+    }
+    
     pub async fn get_reports_of_session(
         client: &Client,
         session_id: uuid::Uuid,
@@ -62,19 +74,7 @@ impl Report {
             .map(|row| Report::from_row_ref(row).unwrap())
             .collect::<Vec<Report>>())
     }
-
-    pub async fn get_tags(&self, client: &Client) -> Result<Vec<Tag>, DataError> {
-        let stmt_str = include_str!("../../sql/get_tags_of_report.sql");
-        let stmt = client.prepare(&stmt_str).await?;
-
-        Ok(client
-            .query(&stmt, &[&self.report_id])
-            .await?
-            .iter()
-            .map(|row| Tag::from_row_ref(row).unwrap())
-            .collect::<Vec<Tag>>())
-    }
-
+    
     pub async fn save_report(client: &Client, report_info: ReportInfo) -> Result<(), DataError> {
         let stmt_str = include_str!("../../sql/insert_report.sql");
         let stmt = client.prepare(&stmt_str).await?;

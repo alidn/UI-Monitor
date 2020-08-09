@@ -28,7 +28,7 @@ async fn main() -> std::io::Result<()> {
     let pool = config.pg.create_pool(connector).unwrap();
 
     // let private_key = rand::thread_rng().gen::<[u8; 32]>();
-    // FIXME: Don't forget to use random key (the above line) in prod.
+    // FIXME: Don't forget to use random key (the above line) in prod mode.
     let private_key: [u8; 32] = [0; 32];
 
     let _server = HttpServer::new(move || {
@@ -64,6 +64,10 @@ async fn main() -> std::io::Result<()> {
             .service(
                 web::resource("/projects/{project_id}/grouped")
                     .route(web::get().to(api::reports::get_grouped_sessions)),
+            )
+            .service(
+                web::resource("/projects/{project_id}/percentages")
+                    .route(web::get().to(api::reports::get_percentages)),
             )
     })
     .bind("127.0.0.1:9000")?

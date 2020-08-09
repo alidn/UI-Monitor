@@ -4,6 +4,7 @@ use actix_cors::Cors;
 use actix_web::{Error, HttpRequest, HttpResponse, Responder};
 use deadpool_postgres::Client;
 use futures::future::{ready, Ready};
+use futures::Stream;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -101,6 +102,60 @@ impl Session {
             .collect())
     }
 
+    /// returns the sessions that have at least one of the tags in tag group.
+    pub async fn get_sessions_with_tag_group(
+        client: &Client,
+        project_id: i32,
+        tag_group: &TagGroup,
+    ) -> Result<Vec<Session>, DataError> {
+        Ok(Self::get_sessions(client, project_id)
+            .await?
+            .into_iter()
+            .filter(|session| session.contains_tag_group(tag_group))
+            .collect::<Vec<Session>>())
+    }
+
+    pub async fn get_percentages(
+        client: &Client,
+        project_id: i32,
+        tag_groups: &[TagGroup],
+    ) -> Result<Vec<Percentage>, DataError> {
+        let sessions_lists = futures::future::join_all(
+            tag_groups
+                .iter()
+                .map(|tag_group| Self::get_sessions_with_tag_group(client, project_id, tag_group)),
+        )
+        .await
+        .into_iter()
+        .collect::<Result<Vec<Vec<Session>>, DataError>>();
+
+        let session_counts = sessions_lists
+            .into_iter()
+            .map(|list| list.len())
+            .collect::<Vec<usize>>();
+
+        let total_count = Self::get_sessions_count(client, project_id).await?;
+
+        if total_count == 0 {
+            return Err(DataError::NoSessionFound);
+        }
+
+        Ok(session_counts
+            .into_iter()
+            .map(|count| ((count / total_count) as u32).into())
+            .collect::<Vec<Percentage>>())
+    }
+
+    async fn get_sessions_count(client: &Client, project_id: i32) -> Result<usize, DataError> {
+        Ok(Self::get_sessions(client, project_id).await?.len())
+    }
+
+    fn contains_tag_group(&self, tag_group: &TagGroup) -> bool {
+        self.reports
+            .iter()
+            .any(|report| tag_group.contains_any(&report.tags))
+    }
+
     fn group_ids(&self, tag_groups: &[TagGroup]) -> Vec<i32> {
         self.reports
             .iter()
@@ -166,4 +221,26 @@ impl Session {
 #[derive(Serialize, Deserialize)]
 pub struct GroupedSession {
     pub steps: Vec<Step>,
+}
+
+#[derive(Copy, Clone, Serialize, Deserialize)]
+pub struct Percentage(u32);
+
+impl Percentage {
+    pub fn new(percentage: u32) -> Option<Self> {
+        if percentage > 100 {
+            None
+        } else {
+            Some(Percentage(percentage))
+        }
+    }
+}
+
+impl<T> From<T> for Percentage
+where
+    T: Into<u32>,
+{
+    fn from(p: T) -> Self {
+        Percentage::new(p.into()).unwrap()
+    }
 }

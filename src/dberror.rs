@@ -15,6 +15,7 @@ pub enum DataError {
     NotFound,
     WrongPassword,
     EmailNotFound,
+    NoSessionFound,
     PGError(PGError),
     PGMError(PGMError),
     PoolError(PoolError),
@@ -28,6 +29,7 @@ impl ResponseError for DataError {
             DataError::NotFound => HttpResponse::NotFound().finish(),
             DataError::WrongPassword => HttpResponse::BadRequest().body("password is wrong"),
             DataError::EmailNotFound => HttpResponse::NotFound().body("Email not found"),
+            DataError::NoSessionFound => HttpResponse::BadRequest().body("No session found"),
             DataError::PoolError(ref err) => {
                 HttpResponse::InternalServerError().body(err.to_string())
             }
