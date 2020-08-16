@@ -1,44 +1,40 @@
 import React from "react";
-import AppBar from "@material-ui/core/AppBar";
-import {Toolbar} from "@material-ui/core";
-import IconButton from "@material-ui/core/IconButton";
-import MenuIcon from '@material-ui/icons/Menu';
-import Typography from "@material-ui/core/Typography";
 import ProjectCard from "./ProjectCard";
-import styles from './Projects.module.css';
+import styles from "./Projects.module.css";
 import TopAppBar from "./TopAppBar";
+import { useQuery } from "react-query";
+import { fetchProjects } from "../api/projects";
+import LinearProgress from "@material-ui/core/LinearProgress";
 
-const projectsData = [
-  {
-    name: 'Actix',
-    sessions: 142331
-  },
-  {
-    name: 'The Alchemist IDE',
-    sessions: 94211231,
-  },
-  {
-    name: 'Phoenix',
-    sessions: 5125234
-  },
-  {
-    name: 'React View',
-    sessions: 10312
-  }
-]
 export default function Projects() {
+  const { isLoading, error, data: projects } = useQuery(
+    "projects",
+    fetchProjects
+  );
+
+  if (isLoading) {
+    return <LinearProgress />;
+  }
+
   return (
     <div>
-      <TopAppBar pageName={'Projects'}/>
-      <ProjectsGrid/>
+      <TopAppBar pageName={"Projects"} />
+      <ProjectsGrid projects={projects} />
     </div>
   );
 }
 
-function ProjectsGrid() {
+function ProjectsGrid({ projects }) {
   return (
     <div className={styles.projectsGrid}>
-      {projectsData.map(p => <ProjectCard name={p.name} sessions={p.sessions}/>)}
+      {projects.map((p) => (
+        <ProjectCard
+          key={p.access_key}
+          name={p.name}
+          sessions={p.sessions}
+          accessKey={p.access_key}
+        />
+      ))}
     </div>
   );
 }

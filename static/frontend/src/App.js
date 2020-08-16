@@ -1,19 +1,20 @@
-import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import React from "react";
 import Projects from "./components/Projects";
-import {BrowserRouter as Router, Switch, Route} from 'react-router-dom';
+import { BrowserRouter as Router, Switch, Route } from "react-router-dom";
 import Project from "./components/Project";
+import { doLogin } from "./api/auth";
+
+doLogin();
 
 function App() {
   return (
     <Router>
       <Switch>
-        <Route path={"/projects/:name"}>
-          <Project/>
+        <Route path={"/projects/:name/:accessKey"}>
+          <Project />
         </Route>
         <Route path={"/projects"}>
-          <Projects/>
+          <Projects />
         </Route>
       </Switch>
     </Router>
