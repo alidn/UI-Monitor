@@ -7,6 +7,7 @@ use futures::future::{ready, Ready};
 use futures::Stream;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use crate::db::percentage::Percentage;
 
 pub type ProjectStats = Vec<Step>;
 
@@ -61,9 +62,9 @@ impl Session {
                 .into_iter()
                 .map(|session_id| Self::get_session(client, session_id)),
         )
-        .await
-        .into_iter()
-        .collect::<Result<Vec<Session>, DataError>>()?;
+            .await
+            .into_iter()
+            .collect::<Result<Vec<Session>, DataError>>()?;
 
         Ok(sessions)
     }
@@ -125,9 +126,9 @@ impl Session {
                 .iter()
                 .map(|tag_group| Self::get_sessions_with_tag_group(client, project_id, tag_group)),
         )
-        .await
-        .into_iter()
-        .collect::<Result<Vec<Vec<Session>>, DataError>>();
+            .await
+            .into_iter()
+            .collect::<Result<Vec<Vec<Session>>, DataError>>();
 
         let session_counts = sessions_lists
             .into_iter()
@@ -183,7 +184,7 @@ impl Session {
         result
     }
 
-    pub fn into_group(self, tag_groups: &[TagGroup]) -> GroupedSession {
+    pub fn into_grouped_session(self, tag_groups: &[TagGroup]) -> GroupedSession {
         let tag_group_ids = self.group_ids(tag_groups);
 
         let group_reports = self.group_by_ids(&tag_group_ids);
@@ -223,24 +224,56 @@ pub struct GroupedSession {
     pub steps: Vec<Step>,
 }
 
-#[derive(Copy, Clone, Serialize, Deserialize)]
-pub struct Percentage(u32);
+#[derive(Serialize, Deserialize)]
+type SessionsAnalytics = Vec<StepAnalysis>;
 
-impl Percentage {
-    pub fn new(percentage: u32) -> Option<Self> {
-        if percentage > 100 {
-            None
-        } else {
-            Some(Percentage(percentage))
+#[derive(Serialize, Deserialize)]
+pub struct StepAnalysis {
+    pub step_number: usize,
+    pub average_duration: i64,
+    pub tag_groups_sorted: Vec<TagGroup>,
+}
+
+pub fn grouped_sessions_to_session_analysis(grouped_sessions: &[GroupedSession]) -> SessionsAnalytics {
+    // TODO: don't guess the max
+    let max_steps = 100;
+    let mut session_analytics = vec![];
+    for step_number in 0..max_steps {
+        let step_analysis = get_step_analysis(grouped_sessions, step_number);
+        session_analytics.push(step_analysis);
+    }
+    session_analytics
+}
+
+pub fn get_step_analysis(grouped_sessions: &[GroupedSession], step_number: usize) -> StepAnalysis {
+    let mut tag_group_counts = HashMap::<TagGroup, u32>::new();
+    let mut duration_sum = 0;
+    let sessions_count = grouped_sessions.len() as i64;
+
+    // count tag-groups
+    grouped_sessions.iter().for_each(|gs| {
+        if gs.steps.len() <= step_number {
+            return;
         }
+
+        let step = &gs.steps[step_number];
+        duration_sum += step.avg_time_ms;
+
+        let prev_count = tag_group_counts.entry(step.tag_group.clone()).or_insert(0);
+        tag_group_counts.insert(step.tag_group.clone(), prev_count + 1);
+    });
+
+    // sort the tag-groups based on their count
+    let mut tag_group_counts: Vec<(TagGroup, i32)> = tag_group_counts.iter().collect();
+    tag_group_counts.sort_by(|l, r| {
+        l.1.cmp(&r.1)
+    });
+
+    StepAnalysis {
+        step_number,
+        average_duration: duration_sum / sessions_count,
+        tag_groups_sorted: tag_group_counts.iter().map(|(key, val)| k).collect()
     }
 }
 
-impl<T> From<T> for Percentage
-where
-    T: Into<u32>,
-{
-    fn from(p: T) -> Self {
-        Percentage::new(p.into()).unwrap()
-    }
-}
+
