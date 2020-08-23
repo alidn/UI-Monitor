@@ -18,7 +18,7 @@ pub struct Step {
     pub avg_time_ms: i64,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub struct TagGroup {
     pub id: i32,
     pub tags_names: Vec<String>,
@@ -224,7 +224,6 @@ pub struct GroupedSession {
     pub steps: Vec<Step>,
 }
 
-#[derive(Serialize, Deserialize)]
 type SessionsAnalytics = Vec<StepAnalysis>;
 
 #[derive(Serialize, Deserialize)]
@@ -259,12 +258,16 @@ pub fn get_step_analysis(grouped_sessions: &[GroupedSession], step_number: usize
         let step = &gs.steps[step_number];
         duration_sum += step.avg_time_ms;
 
-        let prev_count = tag_group_counts.entry(step.tag_group.clone()).or_insert(0);
+        let prev_count = *tag_group_counts.entry(step.tag_group.clone()).or_insert(0);
         tag_group_counts.insert(step.tag_group.clone(), prev_count + 1);
     });
 
     // sort the tag-groups based on their count
-    let mut tag_group_counts: Vec<(TagGroup, i32)> = tag_group_counts.iter().collect();
+    let mut tag_group_counts: Vec<(TagGroup, u32)> = tag_group_counts.iter()
+    .map(|(tg, count)| {
+        (tg.clone(), *count)
+    })
+    .collect();
     tag_group_counts.sort_by(|l, r| {
         l.1.cmp(&r.1)
     });
@@ -272,7 +275,7 @@ pub fn get_step_analysis(grouped_sessions: &[GroupedSession], step_number: usize
     StepAnalysis {
         step_number,
         average_duration: duration_sum / sessions_count,
-        tag_groups_sorted: tag_group_counts.iter().map(|(key, val)| k).collect()
+        tag_groups_sorted: tag_group_counts.iter().map(|(tg, _)| tg.clone()).collect()
     }
 }
 

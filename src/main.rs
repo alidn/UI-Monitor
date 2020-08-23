@@ -69,6 +69,8 @@ async fn main() -> std::io::Result<()> {
                 web::resource("/projects/{project_id}/percentages")
                     .route(web::get().to(api::reports::get_percentages)),
             )
+            .service(web::resource("/projects/{project_id}/percentages")
+            .route(web::get().to(api::reports::get_percentages)),)
     })
     .bind("127.0.0.1:9000")?
     .run()
