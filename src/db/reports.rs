@@ -19,7 +19,7 @@ pub struct Report {
     pub timestamp: i64,
 }
 
-#[derive(Serialize, Deserialize, PostgresMapper, Clone)]
+#[derive(Serialize, Deserialize, PostgresMapper, Clone, Debug)]
 #[pg_mapper(table = "users")]
 pub struct ReportInfo {
     #[serde(skip_serializing)]

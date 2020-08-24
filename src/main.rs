@@ -1,5 +1,3 @@
-#![feature(backtrace)]
-
 mod api;
 mod config;
 mod db;
@@ -66,11 +64,23 @@ async fn main() -> std::io::Result<()> {
                     .route(web::get().to(api::reports::get_grouped_sessions)),
             )
             .service(
-                web::resource("/projects/{project_id}/percentages")
-                    .route(web::get().to(api::reports::get_percentages)),
+                web::resource("/projects/{access_key}/session-counts")
+                    .route(web::get().to(api::projects::get_project_sessions_count)),
             )
-            .service(web::resource("/projects/{project_id}/percentages")
-            .route(web::get().to(api::reports::get_percentages)),)
+            .service(
+                web::resource("/projects/{access_key}/avg-duration")
+                    .route(web::get().to(api::projects::get_average_session_duration)),
+            )
+            .service(
+                web::resource("/projects/{access_key}/tags")
+                    .route(web::get().to(api::projects::get_project_tags)),
+            )
+            .service(
+                web::resource("/projects/{project_id}/percentages")
+                    .route(web::post().to(api::reports::get_percentages)),
+            )
+            .service(web::resource("/projects/{project_id}/analysis")
+            .route(web::post().to(api::reports::get_sessions_analysis)),)
     })
     .bind("127.0.0.1:9000")?
     .run()

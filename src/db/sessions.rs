@@ -1,3 +1,4 @@
+use crate::db::percentage::Percentage;
 use crate::db::reports::{Report, ReportInfo};
 use crate::dberror::DataError;
 use actix_cors::Cors;
@@ -7,16 +8,15 @@ use futures::future::{ready, Ready};
 use futures::Stream;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use crate::db::percentage::Percentage;
 use std::time::Duration;
 
 pub type ProjectStats = Vec<Step>;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Step {
     pub step_number: usize,
     pub tag_group: TagGroup,
-    pub avg_time_ms: i64,
+    pub duration: Duration,
 }
 
 #[derive(Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
@@ -63,9 +63,9 @@ impl Session {
                 .into_iter()
                 .map(|session_id| Self::get_session(client, session_id)),
         )
-            .await
-            .into_iter()
-            .collect::<Result<Vec<Session>, DataError>>()?;
+        .await
+        .into_iter()
+        .collect::<Result<Vec<Session>, DataError>>()?;
 
         Ok(sessions)
     }
@@ -133,12 +133,12 @@ impl Session {
                 .iter()
                 .map(|tag_group| Self::get_sessions_with_tag_group(client, project_id, tag_group)),
         )
-            .await
-            .into_iter()
-            .collect::<Result<Vec<Vec<Session>>, DataError>>();
+        .await
+        .into_iter()
+        .collect::<Result<Vec<Vec<Session>>, DataError>>()?;
 
         let session_counts = sessions_lists
-            .into_iter()
+            .iter()
             .map(|list| list.len())
             .collect::<Vec<usize>>();
 
@@ -150,7 +150,7 @@ impl Session {
 
         Ok(session_counts
             .into_iter()
-            .map(|count| ((count / total_count) as u32).into())
+            .map(|count| ((((count as f64 / total_count as f64) as f64) * 100.0) as u32).into())
             .collect::<Vec<Percentage>>())
     }
 
@@ -160,6 +160,7 @@ impl Session {
             .any(|report| tag_group.contains_any(&report.tags))
     }
 
+    /// maps each report to the first tag-group that has any of that report's tags
     fn group_ids(&self, tag_groups: &[TagGroup]) -> Vec<i32> {
         self.reports
             .iter()
@@ -172,17 +173,20 @@ impl Session {
             .collect()
     }
 
-    fn group_by_ids(&self, group_ids: &Vec<i32>) -> Vec<Vec<ReportInfo>> {
+    fn group_by_ids(&self, group_ids: &[i32]) -> Vec<Vec<ReportInfo>> {
         let mut current_id = -1;
         let mut current_group = vec![];
         let mut result = vec![];
         for (idx, id) in group_ids.iter().enumerate() {
             if *id != current_id && !current_group.is_empty() {
                 result.push(current_group.clone());
-                current_group = vec![];
+                current_group.clear();
             }
             current_group.push(self.reports[idx].clone());
             current_id = *id;
+        }
+        if !current_group.is_empty() {
+            result.push(current_group);
         }
         result
     }
@@ -216,7 +220,13 @@ impl Session {
     pub fn into_grouped_session(self, tag_groups: &[TagGroup]) -> GroupedSession {
         let tag_group_ids = self.group_ids(tag_groups);
 
+        println!("{:#?} tag_groups: ", tag_group_ids);
+        println!("---");
+
         let group_reports = self.group_by_ids(&tag_group_ids);
+
+        println!("{:#?} group_reports: ", group_reports);
+        println!("---");
 
         let timestamps = group_reports
             .iter()
@@ -234,13 +244,15 @@ impl Session {
             last_timestamp = timestamp;
         }
 
+        println!("{:#?} group_reports", durations);
+
         let steps = group_reports[1..]
             .iter()
             .enumerate()
             .map(|(idx, _report_group)| Step {
                 step_number: idx,
                 tag_group: tag_groups[tag_group_ids[idx + 1] as usize].clone(),
-                avg_time_ms: durations[idx + 1],
+                duration: Duration::from_millis(durations[idx + 1].abs() as u64),
             })
             .collect();
 
@@ -258,13 +270,15 @@ type SessionsAnalytics = Vec<StepAnalysis>;
 #[derive(Serialize, Deserialize)]
 pub struct StepAnalysis {
     pub step_number: usize,
+    // in millisecs
     pub average_duration: i64,
     pub tag_groups_sorted: Vec<TagGroup>,
 }
 
-pub fn grouped_sessions_to_session_analysis(grouped_sessions: &[GroupedSession]) -> SessionsAnalytics {
-    // TODO: don't guess the max
-    let max_steps = 100;
+pub fn grouped_sessions_to_session_analysis(
+    grouped_sessions: &[GroupedSession],
+) -> SessionsAnalytics {
+    let max_steps = grouped_sessions.iter().map(|gs| gs.steps.len()).max().unwrap_or(0);
     let mut session_analytics = vec![];
     for step_number in 0..max_steps {
         let step_analysis = get_step_analysis(grouped_sessions, step_number);
@@ -276,7 +290,7 @@ pub fn grouped_sessions_to_session_analysis(grouped_sessions: &[GroupedSession])
 pub fn get_step_analysis(grouped_sessions: &[GroupedSession], step_number: usize) -> StepAnalysis {
     let mut tag_group_counts = HashMap::<TagGroup, u32>::new();
     let mut duration_sum = 0;
-    let sessions_count = grouped_sessions.len() as i64;
+    let sessions_count = grouped_sessions.len() as u128;
 
     // count tag-groups
     grouped_sessions.iter().for_each(|gs| {
@@ -285,27 +299,22 @@ pub fn get_step_analysis(grouped_sessions: &[GroupedSession], step_number: usize
         }
 
         let step = &gs.steps[step_number];
-        duration_sum += step.avg_time_ms;
+        duration_sum += step.duration.as_millis();
 
         let prev_count = *tag_group_counts.entry(step.tag_group.clone()).or_insert(0);
         tag_group_counts.insert(step.tag_group.clone(), prev_count + 1);
     });
 
     // sort the tag-groups based on their count
-    let mut tag_group_counts: Vec<(TagGroup, u32)> = tag_group_counts.iter()
-    .map(|(tg, count)| {
-        (tg.clone(), *count)
-    })
-    .collect();
-    tag_group_counts.sort_by(|l, r| {
-        l.1.cmp(&r.1)
-    });
+    let mut tag_group_counts: Vec<(TagGroup, u32)> = tag_group_counts
+        .iter()
+        .map(|(tg, count)| (tg.clone(), *count))
+        .collect();
+    tag_group_counts.sort_by(|l, r| l.1.cmp(&r.1));
 
     StepAnalysis {
         step_number,
-        average_duration: duration_sum / sessions_count,
-        tag_groups_sorted: tag_group_counts.iter().map(|(tg, _)| tg.clone()).collect()
+        average_duration: (duration_sum / sessions_count) as i64,
+        tag_groups_sorted: tag_group_counts.iter().map(|(tg, _)| tg.clone()).collect(),
     }
 }
-
-
