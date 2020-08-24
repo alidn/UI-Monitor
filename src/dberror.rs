@@ -1,9 +1,6 @@
-#![feature(backtrace)]
-
 use actix_web::{HttpResponse, ResponseError};
 use deadpool_postgres::PoolError;
 use derive_more::{Display, From};
-use std::backtrace;
 use std::error::Error;
 use tokio_pg_mapper::Error as PGMError;
 use tokio_postgres::error::Error as PGError;
@@ -33,13 +30,11 @@ impl ResponseError for DataError {
             DataError::PoolError(ref err) => {
                 HttpResponse::InternalServerError().body(err.to_string())
             }
-            // TODO: Don't show internal server error message to the users in ptod
+            // TODO: Don't show internal server error message to the users in prod
             DataError::PGError(err) => {
-                println!("{:?}", err.backtrace());
                 HttpResponse::InternalServerError().body(err.to_string())
             }
             DataError::PGMError(err) => {
-                println!("{:?}", err.backtrace());
                 HttpResponse::InternalServerError().body(err.to_string())
             }
         }
