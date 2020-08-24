@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use tokio_pg_mapper::FromTokioPostgresRow;
 use tokio_pg_mapper_derive::PostgresMapper;
 use uuid::Uuid;
+use std::time::Duration;
 
 #[derive(Deserialize, Serialize, PostgresMapper)]
 #[pg_mapper(table = "users")]
@@ -44,6 +45,18 @@ impl Project {
             .collect::<Vec<Project>>())
     }
 
+
+    pub async fn get_project_id_from_access_key(
+        client: &Client,
+        access_key: uuid::Uuid,
+    ) -> Result<i32, DataError> {
+        let stmt_str = include_str!("../../sql/project_id_from_access_key.sql");
+        let stmt = client.prepare(stmt_str).await?;
+
+        let row = client.query_one(&stmt, &[&access_key]).await?;
+        Ok(row.get("project_id"))
+    }
+
     pub async fn save_project(
         client: &Client,
         user_id: i32,
@@ -57,5 +70,20 @@ impl Project {
         let saved_project = Project::from_row_ref(&row).unwrap();
 
         Ok(saved_project)
+    }
+
+    pub async fn get_tags(
+        client: &Client,
+        access_key: uuid::Uuid,
+    ) -> Result<Vec<String>, DataError> {
+        let stmt_str = include_str!("../../sql/get_tags_from_access_key.sql");
+        let stmt = client.prepare(stmt_str).await?;
+
+        let rows = client.query(&stmt, &[&access_key]).await?;
+
+        Ok(rows
+            .iter()
+            .map(|row| row.get("name"))
+            .collect::<Vec<String>>())
     }
 }

@@ -8,6 +8,7 @@ use futures::Stream;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use crate::db::percentage::Percentage;
+use std::time::Duration;
 
 pub type ProjectStats = Vec<Step>;
 
@@ -116,6 +117,12 @@ impl Session {
             .collect::<Vec<Session>>())
     }
 
+    pub async fn get_sessions_count(client: &Client, project_id: i32) -> Result<usize, DataError> {
+        // FIXME: no need to get all the sessions, use a SQL query to only get the len
+        let sessions = Self::get_sessions(client, project_id).await?;
+        Ok(sessions.len())
+    }
+
     pub async fn get_percentages(
         client: &Client,
         project_id: i32,
@@ -145,10 +152,6 @@ impl Session {
             .into_iter()
             .map(|count| ((count / total_count) as u32).into())
             .collect::<Vec<Percentage>>())
-    }
-
-    async fn get_sessions_count(client: &Client, project_id: i32) -> Result<usize, DataError> {
-        Ok(Self::get_sessions(client, project_id).await?.len())
     }
 
     fn contains_tag_group(&self, tag_group: &TagGroup) -> bool {
@@ -182,6 +185,32 @@ impl Session {
             current_id = *id;
         }
         result
+    }
+
+    fn get_session_duration(&self) -> u64 {
+        if self.reports.is_empty() {
+            0
+        } else {
+            (self.reports[1].time_ms - self.reports[0].time_ms) as u64
+        }
+    }
+
+    pub async fn get_average_session_duration(
+        client: &Client,
+        project_id: i32,
+    ) -> Result<Duration, DataError> {
+        let sessions = Self::get_sessions(client, project_id).await?;
+
+        if sessions.is_empty() {
+            return Ok(Duration::from_millis(0));
+        }
+
+        let avg_duration_ms = sessions
+            .iter()
+            .map(|s| s.get_session_duration())
+            .sum::<u64>()
+            / sessions.len() as u64;
+        Ok(Duration::from_millis(avg_duration_ms))
     }
 
     pub fn into_grouped_session(self, tag_groups: &[TagGroup]) -> GroupedSession {
