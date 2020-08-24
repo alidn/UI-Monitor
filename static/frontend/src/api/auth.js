@@ -1,4 +1,4 @@
-export function doLogin() {
+export function doLogin(email, pass) {
   let myHeaders = new Headers();
   myHeaders.append("Content-Type", "application/json");
   myHeaders.append(
@@ -6,14 +6,17 @@ export function doLogin() {
     "user_auth=UDinXdmKQFGj+YaYLLkcEL+N0kHOh80QV3HeYXI="
   );
 
-  let raw = JSON.stringify({ email: "zas@gmail.com", password: "asdf" });
+  let raw = JSON.stringify({ email: email, password: pass });
 
   let requestOptions = {
     method: "POST",
-    headers: myHeaders,
+    // headers: myHeaders,
+    headers: {
+      'Content-Type': 'application/json',
+    },
     body: raw,
     redirect: "follow",
   };
 
-  fetch("/login", requestOptions).catch((error) => console.log("error", error));
+  return fetch("/login", requestOptions).then((resp) => resp.status === 200).catch((error) => false);
 }
