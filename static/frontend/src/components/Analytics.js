@@ -10,7 +10,7 @@ import { getTagGroups } from "../api/tagGroups";
 import CardContent from "@material-ui/core/CardContent";
 import Card from "@material-ui/core/Card";
 import CardActions from "@material-ui/core/CardActions";
-import { getPercentages } from "../api/queries";
+import { getPercentages, getSessionsAnalysis } from "../api/queries";
 import { LoadingBar } from "./Project";
 import Dialog from "@material-ui/core/Dialog";
 import DialogTitle from "@material-ui/core/DialogTitle";
@@ -22,7 +22,8 @@ import Divider from "@material-ui/core/Divider";
 export function Analytics({ accessKey }) {
   const [modalOpen, setModalOpen] = useState(false);
   let [tab, setTab] = useState(0);
-  let [result, setResult] = useState({});
+  let [percentagesResult, setPercentagesResult] = useState(null);
+  let [analysisResult, setanalysisResult] = useState(null);
   let [query, setQuery] = useState(null);
   let [isLoading, setLoading] = useState(false);
 
@@ -41,8 +42,10 @@ export function Analytics({ accessKey }) {
     setLoading(true);
     if (tab === 0) {
       let percentages = await getPercentages(qry);
-      setResult(percentages);
+      setPercentagesResult(percentages);
     } else {
+      let analysisResult = await getSessionsAnalysis(qry);
+      setanalysisResult(analysisResult);
     }
     setLoading(false);
   };
@@ -79,7 +82,12 @@ export function Analytics({ accessKey }) {
         handleClose={handleModalClose}
       />
       <Queries handleRun={handleRun} />
-      <QueryResult query={query} result={result} setTab={changeTabTo} />
+      <QueryResult
+        query={query}
+        percentagesResult={percentagesResult}
+        analysisResult={analysisResult}
+        setTab={changeTabTo}
+      />
     </div>
   );
 }
@@ -179,14 +187,10 @@ function Query({ id, name, groups, isSelected, handleSelected }) {
   );
 }
 
-function QueryResult({ setTab, result, query }) {
+function QueryResult({ setTab, percentagesResult, analysisResult, query }) {
   const [value, setValue] = React.useState(0);
 
-  useEffect(() => {
-    console.log(result);
-  }, [result]);
-
-  const handleChange = (event, newValue) => {
+  const handleChange = (_event, newValue) => {
     setValue(newValue);
     setTab(newValue);
   };
@@ -201,18 +205,61 @@ function QueryResult({ setTab, result, query }) {
         <Tab label="Session analytics" />
       </Tabs>
       {value === 0 ? (
-        <PercentagesTab result={result} query={query} />
+        <PercentagesTab result={percentagesResult} query={query} />
       ) : (
-        <SessionAnalyticsTab />
+        <SessionAnalyticsTab result={analysisResult} query={query} />
       )}
     </div>
   );
 }
 
 function PercentagesTab({ result, query }) {
-  return <div>{JSON.stringify(result)}</div>;
+  if (!query || !result) {
+    return (
+      <Typography color={"secondary"}>
+        You have to run the query first
+      </Typography>
+    );
+  }
+
+  console.log(result);
+  return (
+    <div>
+      <Typography style={{ margin: "1rem" }} variant={"h5"}>
+        Query {query.name}
+      </Typography>
+      {query.groups.map((g, i) => {
+        return (
+          <div>
+            <div key={g.name}>
+              <Typography color={"primary"}>
+                {g.name}:{result[i]}%
+              </Typography>
+              <Typography>
+                {g.tags.map((tag) => (
+                  <span key={tag.tagName}>
+                    {" | "} {tag.tagName}
+                  </span>
+                ))}
+              </Typography>
+            </div>
+            <Divider style={{ margin: "0.5rem 0" }} />
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
-function SessionAnalyticsTab() {
-  return <div></div>;
+function SessionAnalyticsTab({ query, result }) {
+  if (!query || !result) {
+    return (
+      <Typography color={"secondary"}>
+        You have to run the query first
+      </Typography>
+    );
+  }
+
+  console.log(result);
+  return <div>{JSON.stringify(result)}</div>;
 }

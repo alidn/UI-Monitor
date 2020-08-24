@@ -30,7 +30,7 @@ export function QueryCreatorModal({ open, handleClose, accessKey }) {
   const [queryName, setQueryName] = useState(
     "query #" + getTagGroupsSize() + 1
   );
-  let { name: projectName } = useParams();
+  // let { name: projectName } = useParams();
 
   useEffect(() => {
     setTags(
@@ -111,6 +111,7 @@ export function QueryCreatorModal({ open, handleClose, accessKey }) {
         tags={tags}
         mapTagToChip={({ selected, tagName }, index) => (
           <Chip
+            key={index}
             color={selected ? "primary" : "default"}
             onClick={() => selectTag(index)}
             style={{ margin: "0.5rem" }}
