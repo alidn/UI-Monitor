@@ -27,3 +27,11 @@ export async function getProjectTags(accessKey) {
   });
   return await response.json();
 }
+
+export async function saveProject(name) {
+  let response = await fetch(`/projects/${name}`, {
+    method: "POST",
+    credentials: "same-origin"
+  });
+  return response.status === 200;
+}
