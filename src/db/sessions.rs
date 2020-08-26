@@ -290,7 +290,8 @@ pub fn grouped_sessions_to_session_analysis(
 pub fn get_step_analysis(grouped_sessions: &[GroupedSession], step_number: usize) -> StepAnalysis {
     let mut tag_group_counts = HashMap::<TagGroup, u32>::new();
     let mut duration_sum = 0;
-    let sessions_count = grouped_sessions.len() as u128;
+
+    let mut step_counts = 0;
 
     // count tag-groups
     grouped_sessions.iter().for_each(|gs| {
@@ -298,6 +299,7 @@ pub fn get_step_analysis(grouped_sessions: &[GroupedSession], step_number: usize
             return;
         }
 
+        step_counts += 1;
         let step = &gs.steps[step_number];
         duration_sum += step.duration.as_millis();
 
@@ -314,7 +316,7 @@ pub fn get_step_analysis(grouped_sessions: &[GroupedSession], step_number: usize
 
     StepAnalysis {
         step_number,
-        average_duration: (duration_sum / sessions_count) as i64,
+        average_duration: (duration_sum / step_counts) as i64,
         tag_groups_sorted: tag_group_counts.iter().map(|(tg, _)| tg.clone()).collect(),
     }
 }
