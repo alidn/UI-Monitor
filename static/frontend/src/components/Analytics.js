@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import styles from "./Project.module.css";
-import { Typography } from "@material-ui/core";
+import { Typography, jssPreset } from "@material-ui/core";
 import Button from "@material-ui/core/Button";
 import AddIcon from "@material-ui/icons/Add";
 import Tabs from "@material-ui/core/Tabs";
@@ -261,5 +261,27 @@ function SessionAnalyticsTab({ query, result }) {
   }
 
   console.log(result);
-  return <div>{JSON.stringify(result)}</div>;
+  // return <div>{JSON.stringify(result)}</div>;
+  return (
+    <ol>
+      {result.map((step) => (
+        <StepAnalysis key={step.step_number} step={step} />
+      ))}
+    </ol>
+  );
+}
+
+function StepAnalysis({ step }) {
+  return (
+    <li>
+      <Typography>Average Duration: {step.average_duration / 1000}</Typography>
+      <div>
+        <b>tags sorted: </b>
+        {step.tag_groups_sorted.map((t) =>
+          t.tags_names.map((tagName) => <span>{tagName}, </span>)
+        )}
+      </div>
+      <Divider style={{ margin: "1rem" }} />
+    </li>
+  );
 }

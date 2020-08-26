@@ -27,7 +27,7 @@ export default function ProjectCard({ name, sessions, accessKey }) {
       </CardContent>
       <CardActions>
         <Link
-          to={`/projects/${name}/${accessKey}`}
+          to={{ pathname: `/projects/${name}/${accessKey}`, state: {accessKey, name} }}
           style={{ textDecoration: "none" }}
         >
           <Button color={"default"} size={"small"}>

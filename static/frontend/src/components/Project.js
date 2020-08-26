@@ -1,5 +1,5 @@
 import React from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useHistory } from "react-router-dom";
 import TopAppBar from "./TopAppBar";
 import { useQuery } from "react-query";
 import {
@@ -23,6 +23,7 @@ export function LoadingBar({ isLoading }) {
 }
 
 export default function Project() {
+  let history = useHistory();
   let { name, accessKey } = useParams();
   let { isLoading: isDurationLoading, data: avgDuration } = useQuery(name, () =>
     fetchAverageSessionDuration(accessKey)
@@ -38,7 +39,7 @@ export default function Project() {
         isLoading={[isDurationLoading, isSessionsLoading].includes(true)}
       />
       <TopAppBar pageName={name} />
-      <Overview avgDuration={avgDuration} sessionsCount={sessionsCount} />
+      <Overview accessKey={accessKey} avgDuration={avgDuration} sessionsCount={sessionsCount} />
       <Analytics accessKey={accessKey} />
     </React.Fragment>
   );

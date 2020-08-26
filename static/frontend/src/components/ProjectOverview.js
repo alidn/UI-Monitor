@@ -4,7 +4,7 @@ import { Typography } from "@material-ui/core";
 import Select from "@material-ui/core/Select";
 import MenuItem from "@material-ui/core/MenuItem";
 
-export function Overview({ avgDuration, sessionsCount }) {
+export function Overview({ avgDuration, sessionsCount, accessKey }) {
   return (
     <div className={styles.layout}>
       <Typography
@@ -15,6 +15,7 @@ export function Overview({ avgDuration, sessionsCount }) {
       >
         Overview
       </Typography>
+      <Typography variant={"h6"}>Access Key: {accessKey}</Typography>
       <Typography variant={"h6"}>Sessions: {sessionsCount}</Typography>
       <SessionDuration avgDuration={avgDuration} />
     </div>
