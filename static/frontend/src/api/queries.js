@@ -1,6 +1,6 @@
 export async function getPercentages(tagGroups, projectId) {
   // FIXME:
-  projectId = 8;
+  projectId = 10;
   tagGroups = tagGroups.groups.map((g, i) => {
     return {
       id: i,
@@ -21,7 +21,7 @@ export async function getPercentages(tagGroups, projectId) {
 
 export async function getSessionsAnalysis(tagGroups, projectId) {
   // FIXME:
-  projectId = 8;
+  projectId = 10;
   tagGroups = tagGroups.groups.map((g, i) => {
     return {
       id: i,

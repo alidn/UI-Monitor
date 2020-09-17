@@ -2,9 +2,10 @@ use crate::db::reports::{Report, ReportInfo};
 use crate::db::sessions::{GroupedSession, Session, TagGroup, grouped_sessions_to_session_analysis};
 use crate::dberror;
 use actix_web::web::Json;
-use actix_web::{web, Error, HttpRequest, HttpResponse};
+use actix_web::{web, Error, HttpRequest, HttpResponse, post};
 use deadpool_postgres::{Client, Pool};
 
+#[post("/reports")]
 pub async fn save_report(
     _req: HttpRequest,
     report_info: Json<ReportInfo>,

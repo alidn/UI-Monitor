@@ -29,7 +29,7 @@ async fn main() -> std::io::Result<()> {
     // FIXME: Don't forget to use random key (the above line) in prod mode.
     let private_key: [u8; 32] = [0; 32];
 
-    let _server = HttpServer::new(move || {
+    let server = HttpServer::new(move || {
         App::new()
             .wrap(Cors::new().supports_credentials().finish())
             .wrap(IdentityService::new(
@@ -54,33 +54,35 @@ async fn main() -> std::io::Result<()> {
                     .wrap(api::user_auth::CheckLogin)
                     .route(web::post().to(api::projects::save_project)),
             )
-            .service(web::resource("/reports").route(web::post().to(api::reports::save_report)))
-            .service(
-                web::resource("/projects/{project_id}/sessions")
-                    .route(web::get().to(api::reports::get_sessions)),
-            )
-            .service(
-                web::resource("/projects/{project_id}/grouped")
-                    .route(web::get().to(api::reports::get_grouped_sessions)),
-            )
-            .service(
-                web::resource("/projects/{access_key}/session-counts")
-                    .route(web::get().to(api::projects::get_project_sessions_count)),
-            )
-            .service(
-                web::resource("/projects/{access_key}/avg-duration")
-                    .route(web::get().to(api::projects::get_average_session_duration)),
-            )
-            .service(
-                web::resource("/projects/{access_key}/tags")
-                    .route(web::get().to(api::projects::get_project_tags)),
-            )
-            .service(
-                web::resource("/projects/{project_id}/percentages")
-                    .route(web::post().to(api::reports::get_percentages)),
-            )
-            .service(web::resource("/projects/{project_id}/analysis")
-            .route(web::post().to(api::reports::get_sessions_analysis)),)
+            // .service(api::reports::save_report)
+            // .service(
+            //     web::resource("/projects/{project_id}/sessions")
+            //         .route(web::get().to(api::reports::get_sessions)),
+            // )
+            // .service(
+            //     web::resource("/projects/{project_id}/grouped")
+            //         .route(web::get().to(api::reports::get_grouped_sessions)),
+            // )
+            // .service(
+            //     web::resource("/projects/{access_key}/session-counts")
+            //         .route(web::get().to(api::projects::get_project_sessions_count)),
+            // )
+            // .service(
+            //     web::resource("/projects/{access_key}/avg-duration")
+            //         .route(web::get().to(api::projects::get_average_session_duration)),
+            // )
+            // .service(
+            //     web::resource("/projects/{access_key}/tags")
+            //         .route(web::get().to(api::projects::get_project_tags)),
+            // )
+            // .service(
+            //     web::resource("/projects/{project_id}/percentages")
+            //         .route(web::post().to(api::reports::get_percentages)),
+            // )
+            // .service(
+            //     web::resource("/projects/{project_id}/analysis")
+            //         .route(web::post().to(api::reports::get_sessions_analysis)),
+            // )
     })
     .bind("127.0.0.1:9000")?
     .run()
